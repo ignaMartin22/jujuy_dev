@@ -65,5 +65,5 @@ El hero es un mosaico de fotos de eventos en tres filas que se desplazan como ca
 - `css/pages.css`: lleva los componentes de `styles.css` de las páginas internas al sistema (paleta, títulos, formas cuadradas).
 - `assets/jd-nav.js`: menú en pantallas chicas y año del footer, en todas las páginas. `assets/jd-home.js`: mosaico del hero y Tren Solar.
 - `assets/fotos/`: fotos de eventos a color. `assets/brand/`: logos, isotipo y la llama.
-- El Tren Solar lleva a las personas del bloque `jd-tren-miembros` de `index.html`, cada una con su foto en `assets/people/`.
+- El Tren Solar lleva a quienes autorizan con GitHub (Supabase, ver `supabase/tren-solar.sql` y el README) y a las personas del bloque `jd-tren-miembros` de `index.html`. Tres por vagón; el tren suma vagones a medida que se suma gente.
 - El tema de la home se elige solo según el sistema (`prefers-color-scheme`); para forzarlo: `localStorage.setItem('jd-theme', 'dark' | 'light')`. Las páginas internas son sólo tema claro por ahora.

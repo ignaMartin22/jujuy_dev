@@ -152,12 +152,14 @@
   }
 
   // members: [{src}], one per window. Windows left over stay empty.
+  var PER_CAR = 3, MIN_CARS = 2;
   function build(root, members) {
-    var cars = Math.max(2, Math.ceil((members.length + 1) / 3)), total = cars * (CAR_W + GAP) + NOSE_W;
+    // Three people per car: every third passenger adds a car, with no upper limit.
+    var cars = Math.max(MIN_CARS, Math.ceil(members.length / PER_CAR)), total = cars * (CAR_W + GAP) + NOSE_W;
     var svg = '<svg class="jd-train__svg" viewBox="0 0 ' + total + ' ' + CAR_H + '" width="' + total + '" height="' + CAR_H + '" aria-hidden="true">';
     for (var c = 0, m = 0; c < cars; c++) {
       var faces = [];
-      for (var k = 0; k < 3; k++, m++) { var f = members[m]; if (f) f.off = ((m * 13) % 21) - 10; faces.push(f); }
+      for (var k = 0; k < PER_CAR; k++, m++) { var f = members[m]; if (f) f.off = ((m * 13) % 21) - 10; faces.push(f); }
       svg += car(c, faces, 'VAGÓN ' + ('0' + (cars - c)).slice(-2));
     }
     svg += nose(cars * (CAR_W + GAP)) + '</svg>';
@@ -165,18 +167,64 @@
     root.querySelector('[data-jd-train]').innerHTML = svg;
   }
 
-  /* Passengers: the inline JSON block the train points at (data-src="#id"), one entry per person
-     with a photo in assets/people/. Newest first, and only MAX of them so the train stays short. */
-  var MAX = 45;
+  /* Passengers, newest first:
+     1. People who authorised with GitHub. They live in the Supabase table tren_miembros, which a
+        trigger fills on sign-in (supabase/tren-solar.sql); the page only reads it.
+     2. The inline JSON block the train points at (data-src="#id"), for people added by hand
+        with a photo in assets/people/.
+     Without Supabase configured (assets/tren-config.js) only the second list rides. */
+  var CFG = window.JD_TREN || {};
+  var ONLINE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
+  var SB_SRC = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
+  var PAGE = 1000; // Supabase returns at most 1000 rows per request
+  var sbPromise = null;
+
+  function supabaseClient() {
+    if (!sbPromise) {
+      sbPromise = new Promise(function (resolve, reject) {
+        var tag = document.createElement('script');
+        tag.src = SB_SRC;
+        tag.onload = function () {
+          resolve(window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true } }));
+        };
+        tag.onerror = reject;
+        document.head.appendChild(tag);
+      });
+    }
+    return sbPromise;
+  }
+
+  // Only GitHub's own avatar host, asked at 96px (the window is 64px tall).
+  function githubAvatar(url) {
+    if (!/^https:\/\/avatars\.githubusercontent\.com\/[\w\/?=&.-]+$/.test(url || '')) return null;
+    return url + (url.indexOf('?') < 0 ? '?' : '&') + 's=96';
+  }
 
   function seedMembers(src) {
     var data = { miembros: [] };
     try { data = JSON.parse(document.querySelector(src).textContent); } catch (e) {}
-    return Promise.resolve(data)
-      .then(function (data) {
-        return (data.miembros || []).filter(function (m) { return m && /^assets\/people\/[\w.-]+\.webp$/.test(m.avatar || ''); })
-          .reverse().slice(0, MAX).map(function (m) { return { src: m.avatar }; });
-      });
+    return (data.miembros || []).filter(function (m) { return m && /^assets\/people\/[\w.-]+\.webp$/.test(m.avatar || ''); })
+      .reverse().map(function (m) { return { login: String(m.login || '').toLowerCase(), src: m.avatar }; });
+  }
+
+  function onlineMembers() {
+    if (!ONLINE) return Promise.resolve([]);
+    return supabaseClient().then(function (sb) {
+      var all = [];
+      function page(from) {
+        return sb.from('tren_miembros').select('github_login, avatar_url')
+          .order('joined_at', { ascending: false }).range(from, from + PAGE - 1)
+          .then(function (res) {
+            var rows = res.data || [];
+            all = all.concat(rows);
+            return rows.length === PAGE ? page(from + PAGE) : all;
+          });
+      }
+      return page(0);
+    }).then(function (rows) {
+      return rows.map(function (m) { return { login: String(m.github_login || '').toLowerCase(), src: githubAvatar(m.avatar_url) }; })
+        .filter(function (m) { return m.src; });
+    }).catch(function () { return []; });
   }
 
   function mount(root) {
@@ -189,10 +237,64 @@
       anim.currentTime = ((S * 0.9) / (W + S)) * anim.effect.getTiming().duration; // empieza con la trompa ya en escena
     }
     var rt; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(run, 200); });
-    seedMembers(root.getAttribute('data-src')).then(function (members) { build(root, members); run(); });
+
+    var seed = seedMembers(root.getAttribute('data-src'));
+    function render(online) {
+      var seen = {}, members = [];
+      online.concat(seed).forEach(function (m) {
+        if (m.login && seen[m.login]) return;
+        seen[m.login] = true; members.push(m);
+      });
+      build(root, members);
+      run();
+    }
+    function refresh() { return onlineMembers().then(render); }
+    render([]);          // the hand-added people ride right away
+    refresh();           // then everyone who signed in with GitHub
+    return refresh;
   }
 
-  document.querySelectorAll('[data-jd-train-root]').forEach(mount);
+  // «Sumate con GitHub»: GitHub asks for authorization, Supabase creates the account and the
+  // trigger puts the avatar on the train. Back on the page, the button turns into «Bajarme».
+  function wireJoin(refresh) {
+    var btn = document.querySelector('[data-jd-tren-join]');
+    var note = document.querySelector('[data-jd-tren-note]');
+    if (!btn || !ONLINE) return;
+    var session = null, idle = btn.textContent;
+    function say(text) { if (note) note.textContent = text; }
+    btn.removeAttribute('target');
+    say('Autorizá con GitHub y tu avatar se suma a los vagones al toque.');
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      supabaseClient().then(function (sb) {
+        if (!session) {
+          say('Abriendo GitHub…');
+          return sb.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: location.origin + location.pathname + '#comunidad' } });
+        }
+        say('Bajándote del tren…');
+        return sb.from('tren_miembros').delete().eq('user_id', session.user.id)
+          .then(function () { return sb.auth.signOut(); })
+          .then(function () { session = null; btn.textContent = idle; say('Listo, te bajaste del tren. Podés volver a subir cuando quieras.'); return refresh(); });
+      }).catch(function () { say('No pudimos conectar con GitHub. Probá de nuevo en un rato.'); });
+    });
+
+    supabaseClient().then(function (sb) {
+      return sb.auth.getSession().then(function (res) {
+        session = res.data && res.data.session;
+        if (/[?&]code=/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
+        if (!session) return;
+        var login = (session.user.user_metadata || {}).user_name || '';
+        btn.textContent = 'Bajarme del tren';
+        say('¡Listo' + (login ? ', @' + login : '') + '! Ya viajás en el Tren Solar.');
+        return refresh();
+      });
+    }).catch(function () {});
+  }
+
+  var refreshers = [];
+  document.querySelectorAll('[data-jd-train-root]').forEach(function (root) { refreshers.push(mount(root)); });
+  wireJoin(function () { return Promise.all(refreshers.map(function (r) { return r(); })); });
 })();
 
 /* ---------- Colaboradores: carrusel continuo (una copia más para el loop) ---------- */

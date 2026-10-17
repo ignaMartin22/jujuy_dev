@@ -24,7 +24,7 @@ La home vive en `index.html` y cada listado en su propia página. Buscá los com
 | Canales de la comunidad      | Bloque `.jd-channels`, debajo del Tren Solar                         |
 | Logos de colaboradores       | Sección `#colaboradores`, copiá una celda `.jd-logo`                 |
 | Staff                        | Sección `#equipo`, una `.jd-person` por persona                      |
-| Tren Solar (`#comunidad`)    | Bloque `jd-tren-miembros` en `index.html`: una línea por persona, con su foto en `assets/people/` |
+| Tren Solar (`#comunidad`)    | Se llena solo con quien autoriza con GitHub (ver «Tren Solar» abajo). A mano: bloque `jd-tren-miembros` en `index.html` |
 | Números de la comunidad      | Sección `#somos`                                                     |
 | Links del footer             | `<footer>` de cada página                                            |
 | Proyectos de la comunidad    | `proyectos/index.html`: copiá una tarjeta (hay una plantilla en el comentario `EDIT`) |
@@ -35,6 +35,25 @@ La home vive en `index.html` y cada listado en su propia página. Buscá los com
 ## Diseño
 
 La guía de marca y del sistema de diseño (colores, tipografías, formas, voz) está en [`assets/brand/DISENO.md`](assets/brand/DISENO.md). La home usa los componentes `.jd-*` de `css/jd.css` sobre los tokens de `css/tokens.css`; las páginas internas suman `css/pages.css`, que lleva los estilos de `styles.css` al mismo sistema.
+
+## Tren Solar
+
+En la home, «Sumate con GitHub» lleva a la pantalla de autorización de GitHub. Al aceptar, la persona vuelve a la home y su avatar ya viaja en el tren. Es el mismo esquema que usa CuyoConnect: Supabase hace el login con GitHub y guarda a cada persona en una tabla; el sitio sigue siendo estático.
+
+Se configura una sola vez:
+
+1. Crear un proyecto gratis en [supabase.com](https://supabase.com).
+2. En GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Homepage: `https://jujuy.dev.ar`. Callback: `https://<tu-proyecto>.supabase.co/auth/v1/callback`. Copiar el Client ID y generar un Client secret.
+3. En Supabase → Authentication → Sign In / Providers → GitHub: activarlo y pegar el Client ID y el secret.
+4. En Supabase → Authentication → URL Configuration: Site URL `https://jujuy.dev.ar`, y en Redirect URLs sumar `https://jujuy.dev.ar/**` y `http://localhost:8000/**` para probar en tu máquina.
+5. En Supabase → SQL Editor, correr `supabase/tren-solar.sql`.
+6. En Supabase → Project Settings → API, copiar la URL del proyecto y la `anon` key a `assets/tren-config.js`.
+
+La `anon` key es pública por diseño: con las reglas de `tren-solar.sql` sólo puede leer la tabla. Nadie escribe desde el navegador; un trigger crea la fila con los datos que manda GitHub, así que no se puede subir a otra persona. Quien quiera bajarse vuelve a entrar y toca «Bajarme del tren».
+
+Entran tres personas por vagón: cada tres que se suman, el tren agrega un vagón, sin tope. Las personas sumadas a mano (bloque `jd-tren-miembros` de `index.html`, ver CONTRIBUTING.md) viajan siempre; si después autorizan con GitHub no se duplican.
+
+Mientras `assets/tren-config.js` esté vacío, el tren muestra sólo a las personas sumadas a mano y el botón lleva a cómo contribuir.
 
 ## Cómo funcionan los buscadores y filtros
 

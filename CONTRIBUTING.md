@@ -75,7 +75,7 @@ Si tenés dudas antes de empezar, abrí un issue o preguntá en el grupo de What
 
 ## Sumarte como contribuidor a la página
 
-Todo PR mergeado suma a su autor al **Tren Solar** de la home (sección `#comunidad`): tu foto viaja en una ventanita de los vagones. Para subirte, en tu mismo PR o en uno aparte agregá dos cosas:
+La forma más rápida de subirte al **Tren Solar** de la home (sección `#comunidad`) es tocar «Sumate con GitHub» y autorizar: tu avatar aparece solo. Si preferís sumarte con una foto propia, en tu PR o en uno aparte agregá dos cosas:
 
 1. **Tu foto** en `assets/people/nombre-apellido.webp`. Cuadrada, 168x168, menos de 10 KB. Si no sabés convertirla, subí un JPG o PNG y la convertimos nosotros.
 

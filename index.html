@@ -82,6 +82,7 @@
   <script>(function(){var t;try{t=localStorage.getItem('jd-theme');}catch(e){}var d=t||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',d);})();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://avatars.githubusercontent.com">
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Montserrat:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
   <link rel="preload" as="image" href="assets/brand/jujuydev-llama-hd.webp" type="image/webp">
   <!-- Bump the version whenever the CSS changes, so browsers do not keep a stale copy. -->
@@ -250,8 +251,10 @@
       <div class="jd-train-head__side">
         <p class="jd-members__count">+600</p>
         <p class="jd-lead">Cada persona que se suma viaja en una ventanita del Tren Solar de la Quebrada.</p>
-        <a class="jd-btn jd-btn--primary" href="https://github.com/FrancoDuran23/jujuy_dev/blob/main/CONTRIBUTING.md#sumarte-como-contribuidor-a-la-página" target="_blank" rel="noopener">Sumate con GitHub</a>
-        <p class="jd-members__note">Mandá un PR con tu foto y tu usuario de GitHub, y te subimos al tren.</p>
+        <!-- With Supabase configured (assets/tren-config.js) this opens GitHub's authorization;
+             without it, it falls back to the link: how to join by hand. -->
+        <a class="jd-btn jd-btn--primary" href="https://github.com/FrancoDuran23/jujuy_dev/blob/main/CONTRIBUTING.md#sumarte-como-contribuidor-a-la-página" target="_blank" rel="noopener" data-jd-tren-join>Sumate con GitHub</a>
+        <p class="jd-members__note" data-jd-tren-note aria-live="polite">Mandá un PR con tu foto y tu usuario de GitHub, y te subimos al tren.</p>
       </div>
     </div>
   </section>
@@ -455,7 +458,8 @@
 </div>
 
   <script src="assets/jd-nav.js?v=2026-10-17c" defer></script>
-  <script src="assets/jd-home.js?v=2026-10-17e" defer></script>
+  <script src="assets/tren-config.js?v=2026-10-17" defer></script>
+  <script src="assets/jd-home.js?v=2026-10-17f" defer></script>
   <script src="assets/calendario.js?v=2026-10-17b" defer></script>
 </body>
 </html>
